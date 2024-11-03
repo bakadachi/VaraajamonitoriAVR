@@ -20,6 +20,10 @@
 #define PUMP2 1
 #define BUZZ1 2
 
+#define TH_LOAD = 72
+#define TH_STOP = 90
+#define TH_HYST = 2
+
 #define ADC_MAX 1023      // 10-bit ADC maximum value
 #define V_REF 4.09        // Reference voltage
 #define R_SERIES 1000.0   // Series resistor value in ohms
@@ -530,8 +534,13 @@ int main(void)
 	adc_result_t s1 = 0;
     adc_result_t s2 = 0;
 	float t1, t2 = 0;
+	
+	// These variables contain the thresholds for pumps
+	float load_th = TH_LOAD;
+	float stop_th = TH_STOP;
+	float hyst_th = TH_HYST;
 
-	/* Replace with your application code */
+	// WHILE //
 	while (1) {
 		s1 = ADC_0_get_conversion(6) - scorr1;
 		t1= (s1 / (float)ADC_MAX) * v_ref;
@@ -542,6 +551,28 @@ int main(void)
 		t2= (s2 / (float)ADC_MAX) * v_ref;
 		t2= R_SERIES * (t2 / (v_ref - t2));
 		t2= (t2 - R0) / ALPHA;
+		
+		// Enter into LATAUS/LOAD state
+		if( tila != LATAUS && (t1 > t2 && !(t1 <= stop_th) && t1 >= load_th)){ 
+			tila = LATAUS;
+			}
+	    // Exit from LATAUS/LOAD state
+		if(tila == LATAUS && (t1 < load_th - hyst_th)){
+			tila = LEPO;
+		}
+		// Enter into PALUU/REVERSE state
+		if(tila != PALUU && (t2 > t1)){
+			tila = PALUU;
+		}
+		// Exit from PALUU/REVERSE state
+		if(tila == PALUU && (t2 < t1 - hyst_th)){
+			tila = LEPO;
+		}
+		// Enter VIKATILA/ERROR state
+		if(t1 > 200 || t1 < 0 || t2 > 200 || t2 < 0 ){
+			tila == VIKA;
+		}
+		
 		
 
 		
