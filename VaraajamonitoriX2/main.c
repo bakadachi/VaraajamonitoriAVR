@@ -10,6 +10,7 @@
 #include <atomic.h>
 #include <usart_basic_example.h>
 #include "i2c.h"
+#include <avr/eeprom.h>
 
 #define MAX4820_CS PD1    // Define Chip Select as PD1
 #define MOSI  3
@@ -20,9 +21,18 @@
 #define PUMP2 1
 #define BUZZ1 2
 
-#define TH_LOAD = 72
-#define TH_STOP = 90
-#define TH_HYST = 2
+#define TH_LOAD   72
+#define TH_STOP   90
+#define TH_HYST   2
+
+// EEPROM DATA ADDRESS
+#define ADDR_DATA_ON	0x00
+#define ADDR_TH_LOAD	0x04
+#define ADDR_TH_STOP	0x08
+#define ADDR_TH_HYST	0x0C
+#define ADDR_AVCC		0x10
+#define ADDR_CORRECTION 0x14
+#define ADDR_COUNTER	0x18
 
 #define ADC_MAX 1023      // 10-bit ADC maximum value
 #define V_REF 4.09        // Reference voltage
@@ -112,6 +122,8 @@
 #define BTN_SELECT 0x04
 #define BTN_RETURN 0x05
 
+
+
 // Define button states
 typedef enum {
 	BUTTON_UP,
@@ -133,6 +145,12 @@ uint8_t menu = 0;
 uint16_t menuTimeCnt = 0;
 uint8_t redrawCnt = 0;
 bool refresh = true;
+
+// Union to handle packing and unpacking float to bytes
+typedef union {
+	float floatValue;
+	uint8_t byteArray[4];
+} FloatUnion;
 	
 // Array to hold button configurations
 Button buttons[NUM_BUTTONS] = {
@@ -143,6 +161,31 @@ Button buttons[NUM_BUTTONS] = {
 	{PC4, BUTTON_UP, 0},
 	{PC5, BUTTON_UP, 0}
 };
+
+void saveFloatToEEPROM(float value, uint16_t address) {
+	// Create a union to pack the float
+	FloatUnion dataToSave;
+	dataToSave.floatValue = value;
+
+	// Write each byte of the float to EEPROM
+	for (uint8_t i = 0; i < 4; i++) {
+		eeprom_write_byte((uint8_t *)(address + i), dataToSave.byteArray[i]);
+	}
+}
+
+float readFloatFromEEPROM(uint16_t address) {
+	// Create a union to retrieve the float from EEPROM
+	FloatUnion retrievedData;
+
+	// Read each byte of the float from EEPROM
+	for (uint8_t i = 0; i < 4; i++) {
+		retrievedData.byteArray[i] = eeprom_read_byte((uint8_t *)(address + i));
+	}
+
+	// Return the reconstructed float
+	return retrievedData.floatValue;
+}
+
 
 // Initialize buttons
 void init_buttons() {
@@ -534,6 +577,12 @@ int main(void)
 	adc_result_t s1 = 0;
     adc_result_t s2 = 0;
 	float t1, t2 = 0;
+	float test_t1, test_t2 = 0;
+	uint8_t testX = 0;
+	
+	// In test mode, test sequences are run
+	bool testmode = false;
+	uint8_t testseq = 0;
 	
 	// These variables contain the thresholds for pumps
 	float load_th = TH_LOAD;
@@ -551,6 +600,8 @@ int main(void)
 		t2= (s2 / (float)ADC_MAX) * v_ref;
 		t2= R_SERIES * (t2 / (v_ref - t2));
 		t2= (t2 - R0) / ALPHA;
+		
+		
 		
 		// Enter into LATAUS/LOAD state
 		if( tila != LATAUS && (t1 > t2 && !(t1 <= stop_th) && t1 >= load_th)){ 
@@ -571,6 +622,19 @@ int main(void)
 		// Enter VIKATILA/ERROR state
 		if(t1 > 200 || t1 < 0 || t2 > 200 || t2 < 0 ){
 			tila == VIKA;
+		}
+		
+		// Replaces measurements with artifical tempatures to test fuctionality
+		if(testmode){
+			switch(testseq){
+				case 1:
+				test_t1 = 60.0 + testX;
+				break;
+				case 2:break;
+				case 3:break;
+				default:break;
+			}
+			testX++;
 		}
 		
 		

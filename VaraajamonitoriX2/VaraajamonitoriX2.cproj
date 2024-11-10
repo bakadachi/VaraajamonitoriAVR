@@ -307,6 +307,9 @@
     <None Include="modules\usart\doc\usart_basic.rst">
       <SubType>compile</SubType>
     </None>
+    <None Include="src\EEPROM.cpp">
+      <SubType>compile</SubType>
+    </None>
     <None Include="src\Waveshare_LCD1602_RGB.cpp">
       <SubType>compile</SubType>
     </None>
@@ -364,6 +367,9 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="include\driver_init.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="include\EEPROM.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="include\i2c.h">
